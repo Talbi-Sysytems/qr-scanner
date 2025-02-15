@@ -17,34 +17,31 @@
 
   <div id="result" style="margin-top: 20px;"></div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.18.7/umd/index.min.js"></script>
+  <!-- Include qr-scanner.js Library -->
+  <script src="https://unpkg.com/qr-scanner/qr-scanner.min.js"></script>
+
   <script>
-    let codeReader;
+    let scanner;
     let scanning = false;
 
     function startScanner() {
-      codeReader = new ZXing.BrowserQRCodeReader();
-      scanning = true;
-
-      // Start scanning
-      codeReader.decodeFromVideoDevice(null, 'preview', (result, error) => {
+      // Initialize the QR Scanner
+      scanner = new QrScanner(document.getElementById('preview'), (result) => {
         if (scanning) {
-          if (result) {
-            // Handle successful QR code scan
-            const scannedName = result.getText();
-            checkIfNameValid(scannedName);
-          }
-          if (error) {
-            console.error(error);
-          }
+          const scannedName = result;
+          checkIfNameValid(scannedName);
         }
       });
+
+      // Start the scanner
+      scanner.start();
+      scanning = true;
     }
 
     function stopScanner() {
       scanning = false;
-      if (codeReader) {
-        codeReader.reset();
+      if (scanner) {
+        scanner.stop();
       }
     }
 
