@@ -88,16 +88,24 @@
         .then(response => response.json())
         .then(data => {
           const resultDiv = document.getElementById('result');
-          if (data.valid) {
-            resultDiv.textContent = `Name "${name}" is valid! ✅`;
-            resultDiv.style.color = 'green';
+          if (data.valid !== undefined) {
+            if (data.valid) {
+              resultDiv.textContent = `Name "${name}" is valid! ✅`;
+              resultDiv.style.color = 'green';
+            } else {
+              resultDiv.textContent = `Name "${name}" is invalid! ❌`;
+              resultDiv.style.color = 'red';
+            }
           } else {
-            resultDiv.textContent = `Name "${name}" is invalid! ❌`;
-            resultDiv.style.color = 'red';
+            resultDiv.textContent = 'Error: Invalid response from server.';
+            resultDiv.style.color = 'orange';
           }
         })
         .catch(err => {
           console.error('Error:', err);
+          const resultDiv = document.getElementById('result');
+          resultDiv.textContent = 'Error: Unable to connect to the server.';
+          resultDiv.style.color = 'red';
         });
     }
   </script>
