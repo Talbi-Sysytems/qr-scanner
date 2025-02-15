@@ -4,7 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>QR Scanner</title>
-  <link rel="stylesheet" href="scanner.css"> <!-- Link to your CSS file -->
+  <link rel="stylesheet" href="event.css"> <!-- Link to your CSS file -->
+  <!-- Include the html5-qrcode library -->
+  <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
 </head>
 <body>
   <h1>QR Scanner</h1>
@@ -12,36 +14,48 @@
   <button onclick="stopScanner()">Stop Scanning</button>
 
   <div id="scanner-container">
-    <video id="preview" width="300" height="300" style="border: 1px solid #ccc; margin-top: 20px;"></video>
+    <div id="reader" style="width: 100%; max-width: 400px; margin: 20px auto;"></div>
   </div>
 
   <div id="result" style="margin-top: 20px;"></div>
 
-  <!-- Include qr-scanner.js Library -->
-  <script src="https://unpkg.com/qr-scanner/qr-scanner.min.js"></script>
-
   <script>
-    let scanner;
+    let qrCodeScanner;
     let scanning = false;
 
+    // Start scanning QR codes
     function startScanner() {
-      // Initialize the QR Scanner
-      scanner = new QrScanner(document.getElementById('preview'), (result) => {
-        if (scanning) {
-          const scannedName = result;
-          checkIfNameValid(scannedName);
-        }
-      });
+      if (scanning) return;
 
-      // Start the scanner
-      scanner.start();
       scanning = true;
+      qrCodeScanner = new Html5Qrcode("reader");
+
+      // Start scanning and capture the result
+      qrCodeScanner.start(
+        { facingMode: "environment" }, // Use the environment camera (rear camera)
+        {
+          fps: 10,  // Frames per second for scanning
+          qrbox: 250,  // QR code scan box size
+        },
+        (decodedText, decodedResult) => {
+          const scannedName = decodedText;  // The scanned result (name)
+          checkIfNameValid(scannedName);
+        },
+        (errorMessage) => {
+          console.log(errorMessage);
+        }
+      );
     }
 
+    // Stop scanning QR codes
     function stopScanner() {
       scanning = false;
-      if (scanner) {
-        scanner.stop();
+      if (qrCodeScanner) {
+        qrCodeScanner.stop().then(() => {
+          console.log("Scanner stopped");
+        }).catch(err => {
+          console.error("Error stopping scanner: ", err);
+        });
       }
     }
 
