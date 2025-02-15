@@ -1,99 +1,36 @@
-/* General Styles for QR Scanner */
+/* General Styling for the QR Scanner */
 body {
   font-family: Arial, sans-serif;
-  background-color: #f4f4f4;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-}
-
-.container {
   text-align: center;
-  background-color: white;
-  padding: 30px;
-  border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  width: 100%;
-  max-width: 600px;
+  background-color: #f4f4f4;
+  padding: 20px;
 }
 
 h1 {
   color: #264e94;
-  font-size: 24px;
-  margin-bottom: 20px;
-}
-
-#qr-reader {
-  margin-top: 20px;
-  width: 100%;
-  height: 300px;
-  border: 2px solid #ddd;
-  border-radius: 8px;
-}
-
-#result {
-  margin-top: 20px;
-}
-
-#scanned-name {
-  font-size: 18px;
-  font-weight: bold;
-  color: #333;
-}
-
-#status {
-  font-size: 36px;
-  margin-top: 10px;
-}
-
-#status-icon {
-  display: inline-block;
-  font-size: 40px;
-  margin-top: 10px;
 }
 
 button {
   background-color: #3db9ec;
   color: white;
-  border: none;
   padding: 10px 20px;
-  font-size: 16px;
+  border: none;
+  border-radius: 5px;
   cursor: pointer;
-  border-radius: 4px;
-  margin-top: 20px;
+  font-size: 16px;
+  margin: 10px;
 }
 
 button:hover {
   background-color: #264e94;
 }
 
-button:active {
-  transform: scale(0.98);
+#scanner-container {
+  margin-top: 20px;
 }
 
-/* Add some padding for smaller screens */
-@media (max-width: 600px) {
-  .container {
-    padding: 15px;
-  }
-
-  #qr-reader {
-    height: 200px;
-  }
-
-  #scanned-name {
-    font-size: 16px;
-  }
-
-  #status-icon {
-    font-size: 30px;
-  }
-
-  button {
-    width: 100%;
-    padding: 12px;
-  }
+#result {
+  margin-top: 20px;
+  font-size: 1.2em;
+  font-weight: bold;
 }
