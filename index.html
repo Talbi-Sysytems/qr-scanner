@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>QR Scanner</title>
   <link rel="stylesheet" href="event.css"> <!-- Link to your CSS file -->
-  <!-- Include the html5-qrcode library -->
-  <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
+  <!-- Include jsQR Library -->
+  <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
 </head>
 <body>
   <h1>QR Scanner</h1>
@@ -14,52 +14,73 @@
   <button onclick="stopScanner()">Stop Scanning</button>
 
   <div id="scanner-container">
-    <div id="reader" style="width: 100%; max-width: 400px; margin: 20px auto;"></div>
+    <video id="preview" width="100%" style="max-width: 500px; margin: 20px auto;"></video>
   </div>
 
   <div id="result" style="margin-top: 20px;"></div>
 
   <script>
-    let qrCodeScanner;
+    let videoElement = document.getElementById('preview');
     let scanning = false;
+    let stream;
+    let requestID;
 
     // Start scanning QR codes
     function startScanner() {
       if (scanning) return;
 
       scanning = true;
-      qrCodeScanner = new Html5Qrcode("reader");
 
-      // Start scanning and capture the result
-      qrCodeScanner.start(
-        { facingMode: "environment" }, // Use the environment camera (rear camera)
-        {
-          fps: 10,  // Frames per second for scanning
-          qrbox: 250,  // QR code scan box size
-        },
-        (decodedText, decodedResult) => {
-          const scannedName = decodedText;  // The scanned result (name)
-          checkIfNameValid(scannedName);
-        },
-        (errorMessage) => {
-          console.log(errorMessage);
-        }
-      );
+      // Set up video stream (camera)
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        .then(function(streamData) {
+          stream = streamData;
+          videoElement.srcObject = stream;
+
+          // Once the video starts playing, begin scanning
+          videoElement.play();
+          requestID = requestAnimationFrame(scanFrame);
+        }).catch(err => {
+          console.error('Error accessing camera: ', err);
+        });
+    }
+
+    // Scan each video frame for QR code
+    function scanFrame() {
+      if (!scanning) return;
+
+      let canvas = document.createElement('canvas');
+      let context = canvas.getContext('2d');
+      canvas.height = videoElement.videoHeight;
+      canvas.width = videoElement.videoWidth;
+
+      context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+
+      let imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+      let decoded = jsQR(imageData.data, canvas.width, canvas.height);
+
+      if (decoded) {
+        // QR code found
+        let scannedName = decoded.data;
+        checkIfNameValid(scannedName);
+      }
+
+      // Request the next frame
+      requestID = requestAnimationFrame(scanFrame);
     }
 
     // Stop scanning QR codes
     function stopScanner() {
       scanning = false;
-      if (qrCodeScanner) {
-        qrCodeScanner.stop().then(() => {
-          console.log("Scanner stopped");
-        }).catch(err => {
-          console.error("Error stopping scanner: ", err);
-        });
+      cancelAnimationFrame(requestID);
+      if (stream) {
+        let tracks = stream.getTracks();
+        tracks.forEach(track => track.stop()); // Stop all video tracks
       }
+      videoElement.srcObject = null;
     }
 
-    // Function to check if the scanned name is valid by querying the Google Apps Script
+    // Function to check if the scanned name is valid
     function checkIfNameValid(name) {
       const url = `https://script.google.com/macros/s/YOUR_SCRIPT_URL/exec?name=${encodeURIComponent(name)}`;
 
