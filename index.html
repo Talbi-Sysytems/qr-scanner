@@ -4,20 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>QR Scanner</title>
-  <style>
-    /* Add your event.css or any other styles here */
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-    }
-    #scanner-container {
-      margin-top: 20px;
-    }
-    #result {
-      margin-top: 20px;
-      font-size: 1.5em;
-    }
-  </style>
+  <link rel="stylesheet" href="event.css"> <!-- Link to your CSS file -->
 </head>
 <body>
   <h1>QR Scanner</h1>
@@ -25,10 +12,10 @@
   <button onclick="stopScanner()">Stop Scanning</button>
 
   <div id="scanner-container">
-    <video id="preview" width="300" height="300"></video>
+    <video id="preview" width="300" height="300" style="border: 1px solid #ccc; margin-top: 20px;"></video>
   </div>
 
-  <div id="result"></div>
+  <div id="result" style="margin-top: 20px;"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.18.7/umd/index.min.js"></script>
   <script>
