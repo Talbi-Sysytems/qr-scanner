@@ -1,80 +1,83 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR Scanner</title>
-    <link rel="stylesheet" href="scanner.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Scanner</title>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
+  <style>
+    /* Add your CSS styles here */
+    body {
+      font-family: Arial, sans-serif;
+    }
+
+    #qr-video {
+      width: 100%;
+      height: auto;
+    }
+
+    #status {
+      margin-top: 20px;
+      font-size: 18px;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>QR Scanner</h1>
-        <video id="qr-video" autoplay></video>
-        <canvas id="qr-canvas"></canvas>
-        <p id="result">Waiting for scan...</p>
-        <button id="start-scan" onclick="startScanning()">Start Scanning</button>
-        <button id="stop-scan" onclick="stopScanning()">Stop Scanning</button>
-    </div>
+  <h1>QR Scanner</h1>
+  <video id="qr-video" width="300" height="200" autoplay></video>
+  <canvas id="qr-canvas" width="300" height="200"></canvas>
+  <p id="status"></p>
 
-    <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
-    <script>
-        let video = document.getElementById('qr-video');
-        let canvasElement = document.getElementById('qr-canvas');
-        let canvas = canvasElement.getContext('2d');
-        let scanning = false;
-        let stream = null;
+  <script>
+    const videoElement = document.getElementById('qr-video');
+    const canvasElement = document.getElementById('qr-canvas');
+    const canvasContext = canvasElement.getContext('2d');
+    const statusElement = document.getElementById('status');
 
-        async function startScanning() {
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-                video.srcObject = stream;
-                scanning = true;
-                scanQR();
-            } catch (error) {
-                alert("Camera access denied or unavailable.");
-            }
-        }
+    async function startScanner() {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      videoElement.srcObject = stream;
 
-        function stopScanning() {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-            }
-            scanning = false;
-            document.getElementById('result').innerText = "Scanning stopped.";
-        }
+      videoElement.addEventListener('play', () => {
+        requestAnimationFrame(scanQRCode);
+      });
+    }
 
-        function scanQR() {
-            if (!scanning) return;
+    function scanQRCode() {
+      canvasContext.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+      const imageData = canvasContext.getImageData(0, 0, canvasElement.width, canvasElement.height);
+      const code = jsQR(imageData.data, canvasElement.width, canvasElement.height);
 
-            canvasElement.width = video.videoWidth;
-            canvasElement.height = video.videoHeight;
-            canvas.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
-            let imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height);
-            let code = jsQR(imageData.data, imageData.width, imageData.height);
+      if (code) {
+        const scannedName = code.data.trim();
+        validateQRCode(scannedName);
+      } else {
+        requestAnimationFrame(scanQRCode);
+      }
+    }
 
-            if (code) {
-                let scannedName = code.data.trim();
-                validateName(scannedName);
-                stopScanning();
-            } else {
-                requestAnimationFrame(scanQR);
-            }
-        }
+    function validateQRCode(scannedName) {
+      // Send the scanned name to Google Sheets API for validation
+      const url = `https://script.google.com/macros/s/AKfycbz5T5B0m4ouEByVtXyaHblEkxKQI8fBtZlwqSK9qUIM/dev?name=${encodeURIComponent(scannedName)}`; // Your actual Apps Script URL
+      fetch(url)
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === "Valid") {
+            statusElement.textContent = "Valid QR Code!";
+            statusElement.style.color = "green";
+          } else {
+            statusElement.textContent = "Invalid QR Code!";
+            statusElement.style.color = "red";
+          }
+        })
+        .catch(err => {
+          statusElement.textContent = "Error validating QR code.";
+          statusElement.style.color = "red";
+        });
+    }
 
-        function validateName(name) {
-            fetch(`https://script.google.com/macros/s/AKfycbz5T5B0m4ouEByVtXyaHblEkxKQI8fBtZlwqSK9qUIM/dev?name=${encodeURIComponent(name)}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.valid) {
-                        document.getElementById('result').innerHTML = `✅ Valid: ${data.name}`;
-                    } else {
-                        document.getElementById('result').innerHTML = `❌ Invalid Name`;
-                    }
-                })
-                .catch(error => {
-                    document.getElementById('result').innerHTML = `❌ Error: ${error}`;
-                });
-        }
-    </script>
+    // Start the scanner
+    startScanner();
+  </script>
 </body>
 </html>
