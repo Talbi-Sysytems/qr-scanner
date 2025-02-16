@@ -1,113 +1,82 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>QR Scanner</title>
-  <link rel="stylesheet" href="scanner.css"> <!-- Link to your CSS file -->
-  <!-- Include jsQR Library -->
-  <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Scanner</title>
+    <link rel="stylesheet" href="scanner.css">
 </head>
 <body>
-  <h1>QR Scanner</h1>
-  <button onclick="startScanner()">Start Scanning</button>
-  <button onclick="stopScanner()">Stop Scanning</button>
+    <div class="container">
+        <h1>QR Code Scanner</h1>
+        <video id="camera" style="width: 100%;"></video>
+        <canvas id="canvas" style="display: none;"></canvas>
+        <p id="status">Scan a QR Code...</p>
+        <button onclick="startScanner()">Start Scanner</button>
+        <button onclick="stopScanner()">Stop Scanner</button>
+    </div>
 
-  <div id="scanner-container">
-    <video id="preview" width="100%" style="max-width: 500px; margin: 20px auto;"></video>
-  </div>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
+    <script>
+        let video = document.getElementById("camera");
+        let canvas = document.getElementById("canvas");
+        let ctx = canvas.getContext("2d");
+        let scanning = false;
+        let stream;
 
-  <div id="result" style="margin-top: 20px;"></div>
-
-  <script>
-    let videoElement = document.getElementById('preview');
-    let scanning = false;
-    let stream;
-    let requestID;
-
-    // Start scanning QR codes
-    function startScanner() {
-      if (scanning) return;
-
-      scanning = true;
-
-      // Set up video stream (camera)
-      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-        .then(function(streamData) {
-          stream = streamData;
-          videoElement.srcObject = stream;
-
-          // Once the video starts playing, begin scanning
-          videoElement.play();
-          requestID = requestAnimationFrame(scanFrame);
-        }).catch(err => {
-          console.error('Error accessing camera: ', err);
-        });
-    }
-
-    // Scan each video frame for QR code
-    function scanFrame() {
-      if (!scanning) return;
-
-      let canvas = document.createElement('canvas');
-      let context = canvas.getContext('2d');
-      canvas.height = videoElement.videoHeight;
-      canvas.width = videoElement.videoWidth;
-
-      context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-
-      let imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-      let decoded = jsQR(imageData.data, canvas.width, canvas.height);
-
-      if (decoded) {
-        // QR code found
-        let scannedName = decoded.data;
-        checkIfNameValid(scannedName);
-      }
-
-      // Request the next frame
-      requestID = requestAnimationFrame(scanFrame);
-    }
-
-    // Stop scanning QR codes
-    function stopScanner() {
-      scanning = false;
-      cancelAnimationFrame(requestID);
-      if (stream) {
-        let tracks = stream.getTracks();
-        tracks.forEach(track => track.stop()); // Stop all video tracks
-      }
-      videoElement.srcObject = null;
-    }
-
-    // Function to check if the scanned name is valid
-    function checkIfNameValid(name) {
-      const url = `https://script.google.com/macros/s/YOUR_SCRIPT_URL/exec?name=${encodeURIComponent(name)}`;
-
-      fetch(url)
-        .then(response => response.json())
-        .then(data => {
-          const resultDiv = document.getElementById('result');
-          if (data.valid !== undefined) {
-            if (data.valid) {
-              resultDiv.textContent = `Name "${name}" is valid! ✅`;
-              resultDiv.style.color = 'green';
-            } else {
-              resultDiv.textContent = `Name "${name}" is invalid! ❌`;
-              resultDiv.style.color = 'red';
+        async function startScanner() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                video.srcObject = stream;
+                video.setAttribute("playsinline", true);
+                video.play();
+                scanning = true;
+                scanQRCode();
+            } catch (error) {
+                document.getElementById("status").innerText = "Error: Camera access denied.";
             }
-          } else {
-            resultDiv.textContent = 'Error: Invalid response from server.';
-            resultDiv.style.color = 'orange';
-          }
-        })
-        .catch(err => {
-          console.error('Error:', err);
-          const resultDiv = document.getElementById('result');
-          resultDiv.textContent = 'Error: Unable to connect to the server.';
-          resultDiv.style.color = 'red';
-        });
-    }
-  </script>
+        }
+
+        function scanQRCode() {
+            if (!scanning) return;
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            let code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "dontInvert" });
+
+            if (code) {
+                validateName(code.data);
+            }
+
+            requestAnimationFrame(scanQRCode);
+        }
+
+        async function validateName(name) {
+            document.getElementById("status").innerText = "Checking...";
+
+            try {
+                let response = await fetch(`https://script.google.com/macros/s/AKfycbz5T5B0m4ouEByVtXyaHblEkxKQI8fBtZlwqSK9qUIM/dev?name=${encodeURIComponent(name)}`);
+                let data = await response.json();
+
+                if (data.valid) {
+                    document.getElementById("status").innerHTML = `<span style="color: green; font-weight: bold;">✅ Valid Name: ${name}</span>`;
+                } else {
+                    document.getElementById("status").innerHTML = `<span style="color: red; font-weight: bold;">❌ Invalid Name</span>`;
+                }
+            } catch (error) {
+                document.getElementById("status").innerHTML = `<span style="color: orange;">⚠️ Error connecting to server</span>`;
+            }
+        }
+
+        function stopScanner() {
+            scanning = false;
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+            document.getElementById("status").innerText = "Scanner Stopped.";
+        }
+    </script>
 </body>
 </html>
