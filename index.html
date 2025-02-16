@@ -1,83 +1,126 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>QR Scanner</title>
-  <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
-  <style>
-    /* Add your CSS styles here */
-    body {
-      font-family: Arial, sans-serif;
-    }
-
-    #qr-video {
-      width: 100%;
-      height: auto;
-    }
-
-    #status {
-      margin-top: 20px;
-      font-size: 18px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Scanner</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f4f4f4;
+            padding: 20px;
+        }
+        h1 {
+            color: #264e94;
+        }
+        video {
+            width: 80%;
+            max-width: 400px;
+            border: 4px solid #264e94;
+            border-radius: 10px;
+            margin: 10px auto;
+        }
+        canvas {
+            display: none;
+        }
+        button {
+            padding: 10px 15px;
+            margin: 10px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #start-btn {
+            background-color: #3db9ec;
+            color: white;
+        }
+        #stop-btn {
+            background-color: #d9534f;
+            color: white;
+        }
+        #status {
+            font-size: 18px;
+            margin-top: 10px;
+        }
+    </style>
 </head>
 <body>
-  <h1>QR Scanner</h1>
-  <video id="qr-video" width="300" height="200" autoplay></video>
-  <canvas id="qr-canvas" width="300" height="200"></canvas>
-  <p id="status"></p>
 
-  <script>
-    const videoElement = document.getElementById('qr-video');
-    const canvasElement = document.getElementById('qr-canvas');
-    const canvasContext = canvasElement.getContext('2d');
-    const statusElement = document.getElementById('status');
+    <h1>QR Code Scanner</h1>
+    <video id="camera" autoplay></video>
+    <canvas id="qr-canvas"></canvas>
+    <button id="start-btn">Start Scanning</button>
+    <button id="stop-btn">Stop Scanning</button>
+    <p id="status">Scan a QR code...</p>
 
-    async function startScanner() {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-      videoElement.srcObject = stream;
+    <script>
+        const video = document.getElementById("camera");
+        const canvas = document.getElementById("qr-canvas");
+        const context = canvas.getContext("2d");
+        const statusText = document.getElementById("status");
+        let scanning = false;
+        let stream = null;
 
-      videoElement.addEventListener('play', () => {
-        requestAnimationFrame(scanQRCode);
-      });
-    }
-
-    function scanQRCode() {
-      canvasContext.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
-      const imageData = canvasContext.getImageData(0, 0, canvasElement.width, canvasElement.height);
-      const code = jsQR(imageData.data, canvasElement.width, canvasElement.height);
-
-      if (code) {
-        const scannedName = code.data.trim();
-        validateQRCode(scannedName);
-      } else {
-        requestAnimationFrame(scanQRCode);
-      }
-    }
-
-    function validateQRCode(scannedName) {
-      // Send the scanned name to Google Sheets API for validation
-      const url = `https://script.google.com/macros/s/AKfycbz5T5B0m4ouEByVtXyaHblEkxKQI8fBtZlwqSK9qUIM/dev?name=${encodeURIComponent(scannedName)}`; // Your actual Apps Script URL
-      fetch(url)
-        .then(response => response.json())
-        .then(data => {
-          if (data.status === "Valid") {
-            statusElement.textContent = "Valid QR Code!";
-            statusElement.style.color = "green";
-          } else {
-            statusElement.textContent = "Invalid QR Code!";
-            statusElement.style.color = "red";
-          }
-        })
-        .catch(err => {
-          statusElement.textContent = "Error validating QR code.";
-          statusElement.style.color = "red";
+        // Start Camera and Scanning
+        document.getElementById("start-btn").addEventListener("click", async () => {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                video.srcObject = stream;
+                scanning = true;
+                scanQR();
+            } catch (error) {
+                console.error("Camera access error:", error);
+                statusText.innerText = "Camera access denied!";
+            }
         });
-    }
 
-    // Start the scanner
-    startScanner();
-  </script>
+        // Stop Scanning
+        document.getElementById("stop-btn").addEventListener("click", () => {
+            if (stream) {
+                let tracks = stream.getTracks();
+                tracks.forEach(track => track.stop());
+            }
+            scanning = false;
+            statusText.innerText = "Scanning stopped.";
+        });
+
+        // Scan QR Code
+        function scanQR() {
+            if (!scanning) return;
+
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+            const qrCode = jsQR(imageData.data, canvas.width, canvas.height);
+
+            if (qrCode) {
+                let scannedName = qrCode.data.trim();
+                validateQRCode(scannedName);
+            } else {
+                setTimeout(scanQR, 200); // Continue scanning
+            }
+        }
+
+        // Validate QR Code with Google Sheets
+        function validateQRCode(name) {
+            fetch(`https://script.google.com/macros/s/AKfycbz5T5B0m4ouEByVtXyaHblEkxKQI8fBtZlwqSK9qUIM/dev?name=${encodeURIComponent(name)}`)
+                .then(response => response.text())
+                .then(result => {
+                    if (result.includes("VALID ✅")) {
+                        statusText.innerHTML = `<span style="color: green;">✅ VALID</span>`;
+                    } else if (result.includes("ALREADY CHECKED IN ✅")) {
+                        statusText.innerHTML = `<span style="color: orange;">⚠️ Already Checked In</span>`;
+                    } else {
+                        statusText.innerHTML = `<span style="color: red;">❌ INVALID</span>`;
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        }
+    </script>
+
 </body>
 </html>
