@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Scanner</title>
+    <link rel="stylesheet" href="scanner.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>QR Scanner</h1>
+        <div id="reader"></div>
+        <p id="result"></p>
+        <button onclick="startScanner()">Start Scanning</button>
+        <button onclick="stopScanner()">Stop Scanning</button>
+    </div>
+
+    <script>
+        const supabaseUrl = "https://titzjlhqnxsywvysnusx.supabase.co";
+        const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpdHpqbGhxbnhzeXd2eXNudXN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk3MDcwMTUsImV4cCI6MjA1NTI4MzAxNX0.K-GTqExqC1tGGpi9a0lrMnlIIoEqFiXUxg-nUxjjY6Y";
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+        let html5QrCode;
+
+        function startScanner() {
+            html5QrCode = new Html5Qrcode("reader");
+            html5QrCode.start(
+                { facingMode: "environment" },  // Use back camera
+                { fps: 10, qrbox: 250 },
+                async (decodedText) => {
+                    await checkValidity(decodedText);
+                }
+            ).catch(err => console.error("Scanner Error:", err));
+        }
+
+        async function checkValidity(name) {
+            const { data, error } = await supabase
+                .from("valid_names")
+                .select("*")
+                .eq("name", name)
+                .single();
+
+            if (error || !data) {
+                document.getElementById("result").innerHTML = `<span style="color: red;">❌ Invalid: ${name}</span>`;
+            } else {
+                document.getElementById("result").innerHTML = `<span style="color: green;">✅ Valid: ${name}</span>`;
+
+                // Update check-in status
+                await supabase
+                    .from("valid_names")
+                    .update({ checked_in: true })
+                    .eq("name", name);
+            }
+        }
+
+        function stopScanner() {
+            if (html5QrCode) {
+                html5QrCode.stop().catch(err => console.error("Stop Error:", err));
+            }
+        }
+    </script>
+</body>
+</html>
